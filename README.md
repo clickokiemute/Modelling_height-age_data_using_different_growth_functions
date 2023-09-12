@@ -21,16 +21,11 @@ METSA KASVUFUNKTSIOONID
 (kasvumudelil LEVAKOVIC II ja MSMA metsatüüpide andmete järgi) 
 
 
-
-Home Task 9
 Curricula Planning and analysis in multifunctional forestry
 
 
 
-
 Supervisor: Professor Andres Kiviste
-
-
 
 
 
@@ -439,9 +434,6 @@ Development class K = middle age stands
 Appendix VII
  
 Development class V = prematured stands
-
-
-
 
 Appendix VIII
  
