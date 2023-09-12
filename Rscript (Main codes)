@@ -1,0 +1,269 @@
+rm(list=ls())  # Delete R objects created during the session 
+cat("\014")    # Or Ctrl+L - Clear the Consol window
+# Delete Graphic window in Rstudio
+if (!is.null(dev.list())) dev.off(dev.list()["Rstudio"]) 
+
+
+setwd("C:/Users/User/Desktop/MetsMud2022")
+dir()
+
+EY<-read.csv2("eyMSMAest.csv",stringsAsFactors = F) # Whole stand data 
+EK<-read.csv2("ekMSMAest.csv",stringsAsFactors = F) # Data by stand elements (composition)
+
+##########################################
+# A Brief overview of stand data EY      #
+##########################################
+
+# How many stands dev.class="L" and h100=0 in our data set?
+
+nrow(subset(EY,arengukl=="L" & h100==0))
+
+# Area of dev.class=L
+L<-subset(EY,arengukl=="L")
+sum(L$pindala)
+
+# Average area of pole stands
+mean(L$pindala)
+sum(L$pindala)/length(L$pindala)
+sum(L$pindala)/nrow(L)
+
+sum(L$pindala==0)
+X<-subset(L,pindala==0)
+
+
+summary(EY$pindala)
+# There is one record (row) with pindala=0, let's exclude it 
+EY<-subset(EY,pindala>0)
+
+# Select necessary variables from EY
+H<-subset(EY,select=c(id,pindala,h100,arengukl,m1_ha))
+# Look at variable distributions  
+table(H$arengukl)  
+summary(H$h100)    # h100=0 for great number of stands
+
+summary(H$m1_ha)   # Maximum volume is too high
+
+sum(H$m1_ha>1000)  # Only one stand, evidently erratic
+# Remove this error 
+H<-subset(H,m1_ha<1000)
+nrow(H$pindala)
+length(H)
+
+#############################################################
+# A brief overview of main species (in composition data EK) #
+#############################################################
+# Select the main tree species data only
+EK1<-subset(EK,enamus==1)  # enamus = indicator of main species
+# Check, the main species must be Scots pine (MA)
+table(EK1$pl)
+# There are few other tree species also (errors), exclude them
+EK1<-subset(EK1,pl=="MA")
+table(EK1$pl) 
+
+# Check storey
+table(EK1$ri)
+# Exclude data records with ri!="1"
+EK1<-subset(EK1,ri=="1")
+table(EK1$ri)
+
+# Look at distribution of stand origin 
+# (par="I" - planted, "K" - seeded, "S" - natural seed,
+# "V" - natural from roots, "X" - not clear)
+table(EK1$par)
+# For conifers (MA, KU) only "I", "K" or "S" is possible
+# For conifers "K" can be planted also (Spruce is not seeded)
+# For birch (KS) "S" or "V" are mostly
+
+# Look at age (a)
+summary(EK1$a)
+table(EK1$a)
+hist(EK1$a)
+sum(EK1$a==0)
+# Exclude stands with zero age
+EK1<-subset(EK1,a>0)
+summary(EK1$a)
+
+############################################
+# Merge data frames H and EK1 and          #
+# continue excluding errors and outliers   #
+############################################
+
+# Before to merge, check : id in EK1 must be unique!
+length(unique(EK1$id))==nrow(EK1) # Must be TRUE
+# Merge stand data (H) and main species data (EK1)
+# Key to join H and EK1 - column id in both data frames
+H<-merge(H,EK1)
+
+# Look at distribution by development classes (arengukl)
+table(H$arengukl)
+
+# Treeless area (arengukl="A") should a=0 and h=0
+plot(h~a,data=subset(H,arengukl=="A"),xlim=c(0,max(a)),ylim=c(0,max(h)))
+subset(H,arengukl=="A")
+
+# Look at development class S = under regeneration
+plot(h~a,data=subset(H,arengukl=="S"),xlim=c(0,max(a)),ylim=c(0,max(h)))
+# Data points cover each other: use jitter() to add artifical variation 
+plot(jitter(h)~jitter(a),data=subset(H,arengukl=="S"),
+     xlim=c(0,max(a)),ylim=c(0,max(h)))
+
+# Look at development class N = young stands
+plot(jitter(h)~jitter(a),data=subset(H,arengukl=="N"),
+     xlim=c(0,max(a)),ylim=c(0,max(h)))
+# One stand h is evidently erratic (remove it)
+H<-subset(H,!(h>20 & arengukl=="N"))
+plot(jitter(h)~jitter(a),data=subset(H,arengukl=="N"),
+     xlim=c(0,max(a)),ylim=c(0,max(h)))
+
+# Look at development class L = pole stands
+plot(jitter(h)~jitter(a),data=subset(H,arengukl=="L"),
+     xlim=c(0,max(a)),ylim=c(0,max(h)))
+# Stand with age<10years and height>10m should be erratic
+H<-subset(H,!(a<10 & h>10 & arengukl=="L"))
+plot(jitter(h)~jitter(a),data=subset(H,arengukl=="L"),
+     xlim=c(0,max(a)),ylim=c(0,max(h)))
+
+# Look at development class K = middle age stands
+plot(jitter(h)~jitter(a),data=subset(H,arengukl=="K"),
+     xlim=c(0,max(a)),ylim=c(0,max(h)))
+# Some stands are elder than middle age but let them be in
+
+# Look at development class V = prematured stands
+plot(jitter(h)~jitter(a),data=subset(H,arengukl=="V"),
+     xlim=c(0,max(a)),ylim=c(0,max(h)))
+# Some stands are elder than premature age but let them be in
+
+# Look at development class Y = matured stands
+plot(jitter(h)~jitter(a),data=subset(H,arengukl=="Y"),
+     xlim=c(0,max(a)),ylim=c(0,max(h)))
+# Some stands seem to be younger than prematured age but let them be in
+# Maturity can be determined also by diameter, earlier than maturity age
+
+# Look at share of main tree species (koef)
+summary(H$koef)
+# Exclude stands having pine share < 50%
+H<-subset(H,koef>=50)
+
+#############################################
+# Create the height-age scatterplot         #
+#############################################
+plot(jitter(h)~jitter(a),data=H,pch=20,cex=0.2)
+plot(h~a,data=H,pch=20,cex=0.2)
+# Still we see pattern of height measurement step 1 meter, thus
+# the function jitter() with default setting it's parameter
+# does not work perfectly
+# Parameter amount in jitter() changes the random variation
+## NB! Jitter is aimed to use for showing covering points in figures
+## DO NOT use jitter for statistical modelling because using jitter
+## increases random error in data
+
+plot(jitter(h,amount=0.5)~jitter(a,amount=0.5),data=H,pch=20,cex=0.2)
+
+# Create the final figure
+plot(NULL,xlim=c(0,250),ylim=c(0,35),
+     xlab="Stand age (year)",ylab="Height (m)",
+     main="Stand height-age relationship in Rhodococcum site type")
+grid()
+points(jitter(h,amount=0.5)~jitter(a,amount=0.5),data=H,pch=20,cex=0.2)
+
+# Create separate figure by stand origin
+
+###########################
+# Scots pine plantations  #
+###########################
+plot(NULL,xlim=c(0,250),ylim=c(0,35),
+     xlab="Stand age (year)",ylab="Height (m)",
+     main="Stand height-age relationship of Scots pine plantations
+     in Rhodococcum site type")
+grid()
+points(jitter(h,amount=0.5)~jitter(a,amount=0.5),
+       data=subset(H,par=="I"),pch=20,cex=0.2,col="red")
+
+###########################
+# Scots pine seeded       #
+###########################
+plot(NULL,xlim=c(0,250),ylim=c(0,35),
+     xlab="Stand age (year)",ylab="Height (m)",
+     main="Stand height-age relationship of seeded Scots pine stands
+     in Rhodococcum site type")
+grid()
+points(jitter(h,amount=0.5)~jitter(a,amount=0.5),
+       data=subset(H,par=="K"),pch=20,cex=0.2,col="blue")
+
+#######################################
+# Scots pine natural regeration       #
+#######################################
+plot(NULL,xlim=c(0,250),ylim=c(0,35),
+     xlab="Stand age (year)",ylab="Height (m)",
+     main="Stand height-age relationship of naturally regerated
+     Scots pine stands in Rhodococcum site type")
+grid()
+points(jitter(h,amount=0.5)~jitter(a,amount=0.5),
+       data=subset(H,par=="S"),pch=20,cex=0.2,col="darkgreen")
+
+
+#################################################################
+#################################################################
+## Modelling height-age data using different growth functions  ##
+#################################################################
+#################################################################
+
+# Let's try to estimate the Levakovic function parameters
+ML1<-nls(h~aa*(a/(bb+a))^cc,data=H,start=list(aa=26,bb=8,cc=2.1))
+# Error in nls(h ~ aa * (a/(bb + a))^cc, data = H, start = list(aa = 26,  : 
+# number of iterations exceeded maximum of 50
+
+# One option could be simplification of the model by fixing one of the
+# growth function parameters, e.g. assigning cc=2
+ML2<-nls(h~aa*(a/(bb+a))^2,data=H,start=list(aa=26,bb=8))
+summary(ML2)
+# The estimation convergged now!
+# aa=34  (asymptote) 
+# bb=19
+# cc=2
+
+# Calculate new predictions
+A<-1:250
+PL2<-predict(ML2,newdata=data.frame(a=A))
+summary(ML2)
+lines(PL2~A,col="green",lwd=2)
+
+# We can vary parameter cc but the model predictions do not depend on that much 
+ML3<-nls(h~aa*(a/(bb+a))^1.5,data=H,start=list(aa=26,bb=8))
+PL3<-predict(ML3,newdata=data.frame(a=A))
+summary(ML3)
+lines(PL3~A,col="blue",lwd=2)
+
+ML4<-nls(h~aa*(a/(bb+a))^3,data=H,start=list(aa=26,bb=8))
+PL4<-predict(ML4,newdata=data.frame(a=A))
+summary(ML4)
+lines(PL4~A,col="magenta",lwd=2)
+
+
+
+# Data points cover each other (having the same height and age)
+# We use jitter function add a little artifical variation
+# to see better points' density
+# Also we can create the plot as a graphics file
+# Let's try to make a nice picture in png format
+png("Fig8.png",width=1500,height=1000)  # Give file name and number of pixels 
+
+par(mar=c(5,7,2,1)+0.1) # For shift graphics borders
+plot(NULL,xlim=c(0,300),ylim=c(0,35),xlab="Age (years)",
+     ylab="Height (m)",cex.axis=2,cex.lab=2)
+grid()
+with(H,points(jitter(a),jitter(h),pch=20))
+lines(Pgam~A,col="red",lwd=2)
+lines(PL2~A,col="green",lwd=2)
+lines(PL3~A,col="blue",lwd=2)
+lines(PL4~A,col="magenta",lwd=2)
+# Add legend
+legend("bottomright",c("Statistical","Levakovic with c=2",
+                       "Levakovic with c=1.5","Levakovic with c=3"),
+       col=c("red","green","blue","magenta"),lwd=2,cex=2)
+dev.off() # Close the graphics file
+
+
+# Comments
+# The Levakovic function does not fit with MSMA height/age data well! 
+# Using cex parameter is needed to increase axes text size fonts
